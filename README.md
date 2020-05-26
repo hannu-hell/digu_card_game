@@ -24,6 +24,10 @@ For the win, The player and player's teammates hands are added and the computer 
 
 NOTE: In the actual game the player who wins the hand in that round gets to play first, but for now i have just started with the player who calls trumps gets to play first in every round.  Will make changes soon.  I Welcome any changes and modification.
 
+credit for:
+card pack - Andrew Tidey http://creativecommons.org/publicdomain/zero/1.0/
+bankground pic - Mitchell Griest
+
 Thank you.
 
 
