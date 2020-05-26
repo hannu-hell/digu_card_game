@@ -18,7 +18,7 @@ There will be a total of 13 rounds and each round will select a winning hand(fou
 
 Once a card is played at the beginnig of the round, the rest of the players will have to follow with that suit if they have in their hands.  The highest value will be awarded the win of the hand for that round.  If in case you dont have a suit that is played, you can play a trump card and win the hand depending if another player didnt play a higher value trump card than what you played.
 
-At the end of 13th round the number of hands obtained by each player are counted and the player with highest hands wins.
+At the end of 13th round the number of hands obtained by each player are counted and the player with highest number of hands wins.
 
 For the win, The player and player's teammates hands are added and the computer and computer's teammates hands are added and checked if player or computer win.
 
