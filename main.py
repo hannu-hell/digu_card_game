@@ -4,6 +4,7 @@ import pygame
 import random
 from tkinter import messagebox
 
+
 # tkinter preconditions
 
 game_quit = False
@@ -24,7 +25,6 @@ Trumps = False
 # Pregame information
 # tkinter Functions
 
-
 def get_info():
     global Trumps
     player_name = text_1.get()
@@ -33,10 +33,9 @@ def get_info():
     else:
         player_information.append(player_name)
         if coin_toss(call_trumps.get()):
-            messagebox.showinfo('Call Trumps', 'Great, You get to call Trumps')
             Trumps = True
         else:
-            messagebox.showinfo('Call Trumps', 'Sorry, the computer will call Trumps')
+            Trumps = False
         initial_info.quit()
         initial_info.destroy()
 
@@ -60,6 +59,7 @@ button_1.pack(side=BOTTOM)
 initial_info.protocol("WM_DELETE_WINDOW", quit_pi)  # if 'x' on the window is pressed then the function is performed
 initial_info.mainloop()
 
+
 # Py_game Preconditions
 if game_quit is False:
     pygame.init()
@@ -70,6 +70,7 @@ if game_quit is False:
     icon = pygame.image.load('cards_icon.png')
     pygame.display.set_icon(icon)
     font = pygame.font.Font(None, 30)
+    i_font = pygame.font.Font(None, 20)
     player_name = font.render(player_information[0].upper(), True, (0, 150, 255))
     player_teammate = font.render(player_information[0].upper() + " TEAMMATE", True, (0, 150, 255))
     computer = font.render('COMP', True, (255, 255, 255))
@@ -107,15 +108,18 @@ if game_quit is False:
     comp_tm_won_hands = 0
     player_tm_won_hands = 0
     all_rounds_done = False
-    # x1 = 90
-    # y1 = 170
-    # x2 = 250
-    # y2 = 470
-    # x3 = 850
-    # y3 = 170
-    # x4 = 250
-    # y4 = 140
-    round_status = dict(round1=False, round2=False, round3=False, round4=False, round5=False, round6=False, round7=False,
+    winner = None
+    game_intro = True
+    x1 = 90
+    y1 = 260
+    x2 = 250
+    y2 = 480
+    x3 = 820
+    y3 = 260
+    x4 = 250
+    y4 = 130
+    round_status = dict(round1=False, round2=False, round3=False, round4=False, round5=False, round6=False,
+                        round7=False,
                         round8=False, round9=False, round10=False, round11=False, round12=False, round13=False)
 
 deck_clubs = [pygame.image.load('Clubs 1.png'), pygame.image.load('Clubs 2.png'), pygame.image.load('Clubs 3.png'),
@@ -143,6 +147,12 @@ deck_spades = [pygame.image.load('Spades 1.png'), pygame.image.load('Spades 2.pn
                pygame.image.load('Spades 8.png'), pygame.image.load('Spades 9.png'), pygame.image.load('Spades 10.png'),
                pygame.image.load('Spades 11.png'),
                pygame.image.load('Spades 12.png'), pygame.image.load('Spades 13.png')]
+
+d_intro_suit = pygame.image.load('diamonds.png')
+i_intro_suit = pygame.image.load('clubs.png')
+g_intro_suit = pygame.image.load('hearts.png')
+u_intro_suit = pygame.image.load('spades.png')
+
 card_back = pygame.image.load('Back Red 1.png')
 player_turn = pygame.image.load('player_turn.png')
 player_trump = pygame.image.load('player_trump.png')
@@ -167,8 +177,8 @@ play_area = pygame.image.load('play_area.jpg')
 
 # Initialize_game functions
 
-
 def display_player_names():
+    win = pygame.display.set_mode((1000, 668))
     win.blit(background, (0, 0))
     win.blit(player_name, (450, 630))
     win.blit(player_teammate, (400, 20))
@@ -357,13 +367,22 @@ def trump_list():
 
 
 def check_cheat(rnd, card):
-    if comp_trump_selected:
+    if comp_round_done:
         for j in player_hand:
-            if j.suit == comp_played_hands[rnd].suit:
-                if card.suit != comp_played_hands[rnd].suit:
-                    return True
+            if winner is None or winner == 'comp':
+                if j.suit == comp_played_hands[rnd].suit:
+                    if card.suit != comp_played_hands[rnd].suit:
+                        return True
+            elif winner == 'comp_tm':
+                if j.suit == comp_teammate_played_hands[rnd].suit:
+                    if card.suit != comp_teammate_played_hands[rnd].suit:
+                        return True
+            elif winner == 'player_tm':
+                if j.suit == player_teammate_played_hands[rnd].suit:
+                    if card.suit != player_teammate_played_hands[rnd].suit:
+                        return True
         return False
-    if player_trump_selected:
+    if not comp_round_done:
         return False
 
 
@@ -483,7 +502,7 @@ def check_highest_value_card(hand):
             return j
     for k in range(13):
         for i in hand:
-            if i.value == values[n-1]:
+            if i.value == values[n - 1]:
                 return i
         n -= 1
         if n < 2:
@@ -538,12 +557,187 @@ def comp_set_play(played_trumps, card, a, b, c, d, e, f, g):
         comp_round_done = True
 
 
-def comp_tm_play(comp_played, rnd, ply_tm_card_pos):
+def comp_tm_play(rnd, ply_tm_card_pos):
     x_limit = 920 - (75 * rnd)
     cards = 13 - rnd
     card_pos = 390 - (20 * rnd)
     rnd -= 1
-    if comp_played:
+    c_pos = len(comp_played_hands)
+    p_pos = len(player_played_hands)
+    ct_pos = len(comp_teammate_played_hands)
+    pt_pos = len(player_teammate_played_hands)
+    if ct_pos == rnd and pt_pos == rnd + 1 and c_pos == rnd + 1 and p_pos == rnd + 1:
+        a = player_teammate_played_hands[rnd]
+        b = comp_played_hands[rnd]
+        c = player_played_hands[rnd]
+        if a.suit != trump and b.suit != trump and c.suit != trump:
+            if a.suit == b.suit == c.suit:
+                if have_suits(computer_teammate_hand, a.suit):
+                    d = compare_cards(compare_cards(a, b), c)
+                    d0 = check_least_high_card(d, computer_teammate_hand)
+                    if d0 is not None:
+                        comp_tm_set_play(False, d0, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                    elif d0 is None:
+                        d1 = check_lowest_value_card_of_suit(computer_teammate_hand, a.suit)
+                        comp_tm_set_play(False, d1, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                elif have_suits(computer_teammate_hand, a.suit) is False:
+                    if len(comp_teammate_trumps) > 0:
+                        d2 = check_lowest_value_card(comp_teammate_trumps)
+                        comp_tm_set_play(True, d2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                    elif len(comp_teammate_trumps) == 0:
+                        d3 = check_lowest_value_card(computer_teammate_hand)
+                        comp_tm_set_play(False, d3, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+            elif a.suit == b.suit and b.suit != c.suit:
+                if have_suits(computer_teammate_hand, a.suit):
+                    d4 = check_least_high_card(compare_cards(a, b), computer_teammate_hand)
+                    if d4 is not None:
+                        comp_tm_set_play(False, d4, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                    elif d4 is None:
+                        d5 = check_lowest_value_card_of_suit(computer_teammate_hand, a.suit)
+                        comp_tm_set_play(False, d5, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                elif have_suits(computer_teammate_hand, a.suit) is False:
+                    if len(comp_teammate_trumps) > 0:
+                        d6 = check_lowest_value_card(comp_teammate_trumps)
+                        comp_tm_set_play(True, d6, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                    elif len(comp_teammate_trumps) == 0:
+                        d7 = check_lowest_value_card(computer_teammate_hand)
+                        comp_tm_set_play(False, d7, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+            elif a.suit == c.suit and c.suit != b.suit:
+                if have_suits(computer_teammate_hand, a.suit):
+                    d8 = check_least_high_card(compare_cards(a, c), computer_teammate_hand)
+                    if d8 is not None:
+                        comp_tm_set_play(False, d8, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                    elif d8 is None:
+                        d9 = check_lowest_value_card_of_suit(computer_teammate_hand, a.suit)
+                        comp_tm_set_play(False, d9, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                elif have_suits(computer_teammate_hand, a.suit) is False:
+                    if len(comp_teammate_trumps) > 0:
+                        d10 = check_lowest_value_card(comp_teammate_trumps)
+                        comp_tm_set_play(True, d10, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                    elif len(comp_teammate_trumps) == 0:
+                        d11 = check_lowest_value_card(computer_teammate_hand)
+                        comp_tm_set_play(False, d11, x_limit, cards, cards, cards, card_pos, card_pos,
+                                         ply_tm_card_pos)
+            elif a.suit != b.suit and b.suit == c.suit:
+                if have_suits(computer_teammate_hand, a.suit):
+                    w = check_least_high_card(a, computer_teammate_hand)
+                    if w is not None:
+                        comp_tm_set_play(False, w, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                    elif w is None:
+                        w1 = check_lowest_value_card_of_suit(computer_teammate_hand, a.suit)
+                        comp_tm_set_play(False, w1, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                elif have_suits(computer_teammate_hand, a.suit) is False:
+                    if len(comp_teammate_trumps) > 0:
+                        w2 = check_lowest_value_card(comp_teammate_trumps)
+                        comp_tm_set_play(True, w2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                    elif len(comp_teammate_trumps) == 0:
+                        w3 = check_lowest_value_card(computer_teammate_hand)
+                        comp_tm_set_play(False, w3, x_limit, cards, cards, cards, card_pos, card_pos,
+                                         ply_tm_card_pos)
+            elif a.suit != b.suit != c.suit:
+                if have_suits(computer_teammate_hand, a.suit):
+                    d12 = check_least_high_card(a, computer_teammate_hand)
+                    if d12 is not None:
+                        comp_tm_set_play(False, d12, x_limit, cards, cards, cards, card_pos, card_pos,
+                                         ply_tm_card_pos)
+                    elif d12 is None:
+                        d13 = check_lowest_value_card_of_suit(computer_teammate_hand, a.suit)
+                        comp_tm_set_play(False, d13, x_limit, cards, cards, cards, card_pos, card_pos,
+                                         ply_tm_card_pos)
+                elif have_suits(computer_teammate_hand, a.suit) is False:
+                    if len(comp_teammate_trumps) > 0:
+                        d14 = check_lowest_value_card(comp_teammate_trumps)
+                        comp_tm_set_play(True, d14, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                    elif len(comp_teammate_trumps) == 0:
+                        d15 = check_lowest_value_card(computer_teammate_hand)
+                        comp_tm_set_play(False, d15, x_limit, cards, cards, cards, card_pos, card_pos,
+                                         ply_tm_card_pos)
+        if a.suit != trump and b.suit != trump and c.suit == trump:
+            if have_suits(computer_teammate_hand, a.suit):
+                e = check_lowest_value_card_of_suit(computer_teammate_hand, a.suit)
+                comp_tm_set_play(False, e, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+            elif have_suits(computer_teammate_hand, a.suit) is False:
+                if len(comp_teammate_trumps) > 0:
+                    e1 = check_least_high_card(c, comp_teammate_trumps)
+                    if e1 is not None:
+                        comp_tm_set_play(True, e1, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                    elif e1 is None:
+                        e2 = check_lowest_value_card(computer_teammate_hand)
+                        comp_tm_set_play(False, e2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                elif len(comp_teammate_trumps) == 0:
+                    e3 = check_lowest_value_card(computer_teammate_hand)
+                    comp_tm_set_play(False, e3, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+        if a.suit != trump and b.suit == trump and c.suit != trump:
+            if have_suits(computer_teammate_hand, a.suit):
+                f = check_lowest_value_card_of_suit(computer_teammate_hand, a.suit)
+                comp_tm_set_play(False, f, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+            elif have_suits(computer_teammate_hand, a.suit) is False:
+                if len(comp_teammate_trumps) > 0:
+                    f1 = check_least_high_card(b, comp_teammate_trumps)
+                    if f1 is not None:
+                        comp_tm_set_play(True, f1, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                    elif f1 is None:
+                        f2 = check_lowest_value_card(comp_teammate_trumps)
+                        comp_tm_set_play(True, f2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                elif len(comp_teammate_trumps) == 0:
+                    f3 = check_lowest_value_card(computer_teammate_hand)
+                    comp_tm_set_play(False, f3, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+        if a.suit == trump and b.suit != trump and c.suit != trump:
+            if len(comp_teammate_trumps) > 0:
+                g = check_least_high_card(a, comp_teammate_trumps)
+                if g is not None:
+                    comp_tm_set_play(True, g, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                elif g is None:
+                    g1 = check_lowest_value_card(comp_teammate_trumps)
+                    comp_tm_set_play(True, g1, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+            elif len(comp_teammate_trumps) == 0:
+                g2 = check_lowest_value_card(computer_teammate_hand)
+                comp_tm_set_play(False, g2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+        if a.suit == trump and b.suit == trump and c.suit != trump:
+            if len(comp_teammate_trumps) > 0:
+                h = check_least_high_card(compare_cards(a, b), comp_teammate_trumps)
+                if h is not None:
+                    comp_tm_set_play(True, h, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                if h is None:
+                    h1 = check_lowest_value_card(comp_teammate_trumps)
+                    comp_tm_set_play(True, h1, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+            elif len(comp_teammate_trumps) == 0:
+                h2 = check_lowest_value_card(computer_teammate_hand)
+                comp_tm_set_play(False, h2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+        if a.suit == trump and b.suit != trump and c.suit == trump:
+            if len(comp_teammate_trumps) > 0:
+                i = check_least_high_card(compare_cards(a, c), comp_teammate_trumps)
+                if i is not None:
+                    comp_tm_set_play(True, i, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                if i is None:
+                    i1 = check_lowest_value_card(comp_teammate_trumps)
+                    comp_tm_set_play(True, i1, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+            elif len(comp_teammate_trumps) == 0:
+                i2 = check_lowest_value_card(computer_teammate_hand)
+                comp_tm_set_play(False, i2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+        if a.suit != trump and b.suit == trump and c.suit == trump:
+            if len(comp_teammate_trumps) > 0:
+                j = check_least_high_card(compare_cards(b, c), comp_teammate_trumps)
+                if j is not None:
+                    comp_tm_set_play(True, j, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                if j is None:
+                    j1 = check_lowest_value_card(comp_teammate_trumps)
+                    comp_tm_set_play(True, j1, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+            elif len(comp_teammate_trumps) == 0:
+                j2 = check_lowest_value_card(computer_teammate_hand)
+                comp_tm_set_play(False, j2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+        if a.suit == trump and b.suit == trump and c.suit == trump:
+            if len(comp_teammate_trumps) > 0:
+                k = check_least_high_card(compare_cards(compare_cards(a, b), c), comp_teammate_trumps)
+                if k is not None:
+                    comp_tm_set_play(True, k, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                if k is None:
+                    k1 = check_lowest_value_card(comp_teammate_trumps)
+                    comp_tm_set_play(True, k1, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+            elif len(comp_teammate_trumps) == 0:
+                k2 = check_lowest_value_card(computer_teammate_hand)
+                comp_tm_set_play(False, k2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+    elif ct_pos == rnd and pt_pos == rnd and c_pos == rnd + 1 and p_pos == rnd + 1:
         a = comp_played_hands[rnd]
         b = player_played_hands[rnd]
         if a.suit != trump and b.suit != trump:
@@ -596,8 +790,8 @@ def comp_tm_play(comp_played, rnd, ply_tm_card_pos):
                     if h is not None:
                         comp_tm_set_play(True, h, x_limit, cards, cards, cards + 1, card_pos, card_pos, ply_tm_card_pos)
                     elif h is None:
-                        i = check_lowest_value_card(computer_teammate_hand)
-                        comp_tm_set_play(False, i, x_limit, cards, cards, cards + 1, card_pos, card_pos,
+                        i = check_lowest_value_card(comp_teammate_trumps)
+                        comp_tm_set_play(True, i, x_limit, cards, cards, cards + 1, card_pos, card_pos,
                                          ply_tm_card_pos)
                 elif len(comp_teammate_trumps) == 0:
                     j = check_lowest_value_card(computer_teammate_hand)
@@ -624,8 +818,7 @@ def comp_tm_play(comp_played, rnd, ply_tm_card_pos):
             elif len(comp_teammate_trumps) == 0:
                 r = check_lowest_value_card(computer_teammate_hand)
                 comp_tm_set_play(False, r, x_limit, cards, cards, cards + 1, card_pos, card_pos, ply_tm_card_pos)
-
-    if comp_played is False:
+    elif ct_pos == rnd and pt_pos == rnd and c_pos == rnd and p_pos == rnd + 1:
         s = player_played_hands[rnd]
         if s.suit != trump:
             if have_suits(computer_teammate_hand, s.suit):
@@ -660,14 +853,27 @@ def comp_tm_play(comp_played, rnd, ply_tm_card_pos):
                 y = check_lowest_value_card(computer_teammate_hand)
                 comp_tm_set_play(False, y, x_limit, cards + 1, cards, cards + 1, card_pos + 20, card_pos,
                                  ply_tm_card_pos)
+    elif ct_pos == rnd and pt_pos == rnd and c_pos == rnd and p_pos == rnd:
+        if len(computer_teammate_hand) == 0:
+            kk_1 = random.choice(comp_teammate_trumps)
+            comp_tm_set_play(True, kk_1, x_limit + 75, cards + 1, cards, cards + 1, card_pos + 20, card_pos,
+                             ply_tm_card_pos)
+        if len(computer_teammate_hand) > 0:
+            k = random.choice(computer_teammate_hand)
+            comp_tm_set_play(False, k, x_limit + 75, cards + 1, cards, cards + 1, card_pos + 20, card_pos,
+                             ply_tm_card_pos)
 
 
-def player_tm_play(comp_played, rnd, ply_tm_card_pos):
+def player_tm_play(rnd, ply_tm_card_pos):
     x_limit = 920 - (75 * rnd)
     cards = 13 - rnd
     card_pos = 390 - (20 * rnd)
     rnd -= 1
-    if comp_played:
+    c_pos = len(comp_played_hands)
+    p_pos = len(player_played_hands)
+    ct_pos = len(comp_teammate_played_hands)
+    pt_pos = len(player_teammate_played_hands)
+    if pt_pos == rnd and c_pos == rnd + 1 and p_pos == rnd + 1 and ct_pos == rnd + 1:
         a = comp_played_hands[rnd]
         b = player_played_hands[rnd]
         c = comp_teammate_played_hands[rnd]
@@ -778,8 +984,8 @@ def player_tm_play(comp_played, rnd, ply_tm_card_pos):
                     if f1 is not None:
                         player_tm_set_play(True, f1, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
                     elif f1 is None:
-                        f2 = check_lowest_value_card(player_teammate_hand)
-                        player_tm_set_play(False, f2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                        f2 = check_lowest_value_card(player_teammate_trumps)
+                        player_tm_set_play(True, f2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
                 elif len(player_teammate_trumps) == 0:
                     f3 = check_lowest_value_card(player_teammate_hand)
                     player_tm_set_play(False, f3, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
@@ -838,7 +1044,7 @@ def player_tm_play(comp_played, rnd, ply_tm_card_pos):
             elif len(player_teammate_trumps) == 0:
                 k2 = check_lowest_value_card(player_teammate_hand)
                 player_tm_set_play(False, k2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-    if comp_played is False:
+    elif pt_pos == rnd and c_pos == rnd and p_pos == rnd + 1 and ct_pos == rnd + 1:
         s = player_played_hands[rnd]
         h = comp_teammate_played_hands[rnd]
         if s.suit != trump and h.suit != trump:
@@ -891,8 +1097,8 @@ def player_tm_play(comp_played, rnd, ply_tm_card_pos):
                         player_tm_set_play(True, n1, x_limit, cards + 1, cards, cards, card_pos + 20, card_pos,
                                            ply_tm_card_pos)
                     if n1 is None:
-                        n2 = check_lowest_value_card(player_teammate_hand)
-                        player_tm_set_play(False, n2, x_limit, cards + 1, cards, cards, card_pos + 20, card_pos,
+                        n2 = check_lowest_value_card(player_teammate_trumps)
+                        player_tm_set_play(True, n2, x_limit, cards + 1, cards, cards, card_pos + 20, card_pos,
                                            ply_tm_card_pos)
                 elif len(player_teammate_trumps) == 0:
                     n3 = check_lowest_value_card(player_teammate_hand)
@@ -926,6 +1132,50 @@ def player_tm_play(comp_played, rnd, ply_tm_card_pos):
                 p2 = check_lowest_value_card(player_teammate_hand)
                 player_tm_set_play(False, p2, x_limit, cards + 1, cards, cards, card_pos + 20, card_pos,
                                    ply_tm_card_pos)
+    elif pt_pos == rnd and c_pos == rnd and p_pos == rnd and ct_pos == rnd + 1:
+        s = comp_teammate_played_hands[rnd]
+        if s.suit != trump:
+            if have_suits(player_teammate_hand, s.suit):
+                t = check_least_high_card(s, player_teammate_hand)
+                if t is not None:
+                    player_tm_set_play(False, t, x_limit + 75, cards + 1, cards, cards, card_pos + 20, card_pos,
+                                       ply_tm_card_pos)
+                elif t is None:
+                    t1 = check_lowest_value_card_of_suit(player_teammate_hand, s.suit)
+                    player_tm_set_play(False, t1, x_limit + 75, cards + 1, cards, cards, card_pos + 20, card_pos,
+                                       ply_tm_card_pos)
+            elif have_suits(player_teammate_hand, s.suit) is False:
+                if len(player_teammate_trumps) > 0:
+                    u = check_lowest_value_card(player_teammate_trumps)
+                    player_tm_set_play(True, u, x_limit + 75, cards + 1, cards, cards, card_pos + 20, card_pos,
+                                       ply_tm_card_pos)
+                elif len(player_teammate_trumps) == 0:
+                    v = check_lowest_value_card(player_teammate_hand)
+                    player_tm_set_play(False, v, x_limit + 75, cards + 1, cards, cards, card_pos + 20, card_pos,
+                                       ply_tm_card_pos)
+        elif s.suit == trump:
+            if len(player_teammate_trumps) > 0:
+                w = check_least_high_card(s, player_teammate_trumps)
+                if w is not None:
+                    player_tm_set_play(True, w, x_limit + 75, cards + 1, cards, cards, card_pos + 20, card_pos,
+                                       ply_tm_card_pos)
+                if w is None:
+                    x = check_lowest_value_card(player_teammate_trumps)
+                    player_tm_set_play(True, x, x_limit + 75, cards + 1, cards, cards, card_pos + 20, card_pos,
+                                       ply_tm_card_pos)
+            elif len(player_teammate_trumps) == 0:
+                y = check_lowest_value_card(player_teammate_hand)
+                player_tm_set_play(False, y, x_limit + 75, cards + 1, cards, cards, card_pos + 20, card_pos,
+                                   ply_tm_card_pos)
+    elif pt_pos == rnd and c_pos == rnd and p_pos == rnd and ct_pos == rnd:
+        if len(player_teammate_hand) == 0:
+            kk_1 = random.choice(player_teammate_trumps)
+            player_tm_set_play(True, kk_1, x_limit + 75, cards + 1, cards + 1, cards, card_pos + 20, card_pos + 20,
+                               ply_tm_card_pos)
+        if len(player_teammate_hand) > 0:
+            k = random.choice(player_teammate_hand)
+            player_tm_set_play(False, k, x_limit + 75, cards + 1, cards + 1, cards, card_pos + 20, card_pos + 20,
+                               ply_tm_card_pos)
 
 
 def comp_play(first_play, rnd, ply_tm_card_pos):
@@ -934,180 +1184,319 @@ def comp_play(first_play, rnd, ply_tm_card_pos):
     cards = 13 - rnd
     card_pos = 390 - (20 * rnd)
     rnd -= 1
+    c_pos = len(comp_played_hands)
+    p_pos = len(player_played_hands)
+    ct_pos = len(comp_teammate_played_hands)
+    pt_pos = len(player_teammate_played_hands)
     if first_play:
         clear_all_decks()
         if len(computer_hand) == 0:
             kk_1 = random.choice(comp_trumps)
-            comp_set_play(True, kk_1, x_limit + 75, cards, cards+1, cards+1, card_pos, card_pos+20, ply_tm_card_pos)
+            comp_set_play(True, kk_1, x_limit + 75, cards, cards + 1, cards + 1, card_pos, card_pos + 20,
+                          ply_tm_card_pos)
         if len(computer_hand) > 0:
             k = random.choice(computer_hand)
             comp_set_play(False, k, x_limit + 75, cards, cards + 1, cards + 1, card_pos, card_pos + 20, ply_tm_card_pos)
     elif not first_play:
-        a = player_played_hands[rnd]
-        b = comp_teammate_played_hands[rnd]
-        c = player_teammate_played_hands[rnd]
-        if a.suit != trump and b.suit != trump and c.suit != trump:
-            if a.suit == b.suit == c.suit:
+        if c_pos == rnd and p_pos == rnd + 1 and ct_pos == rnd + 1 and pt_pos == rnd + 1:
+            a = player_played_hands[rnd]
+            b = comp_teammate_played_hands[rnd]
+            c = player_teammate_played_hands[rnd]
+            if a.suit != trump and b.suit != trump and c.suit != trump:
+                if a.suit == b.suit == c.suit:
+                    if have_suits(computer_hand, a.suit):
+                        d = compare_cards(compare_cards(a, b), c)
+                        d0 = check_least_high_card(d, computer_hand)
+                        if d0 is not None:
+                            comp_set_play(False, d0, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                        elif d0 is None:
+                            d1 = check_lowest_value_card_of_suit(computer_hand, a.suit)
+                            comp_set_play(False, d1, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                    elif have_suits(computer_hand, a.suit) is False:
+                        if len(comp_trumps) > 0:
+                            d2 = check_lowest_value_card(comp_trumps)
+                            comp_set_play(True, d2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                        elif len(comp_trumps) == 0:
+                            d3 = check_lowest_value_card(computer_hand)
+                            comp_set_play(False, d3, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                elif a.suit == b.suit and b.suit != c.suit:
+                    if have_suits(computer_hand, a.suit):
+                        d4 = check_least_high_card(compare_cards(a, b), computer_hand)
+                        if d4 is not None:
+                            comp_set_play(False, d4, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                        elif d4 is None:
+                            d5 = check_lowest_value_card_of_suit(computer_hand, a.suit)
+                            comp_set_play(False, d5, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                    elif have_suits(computer_hand, a.suit) is False:
+                        if len(comp_trumps) > 0:
+                            d6 = check_lowest_value_card(comp_trumps)
+                            comp_set_play(True, d6, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                        elif len(comp_trumps) == 0:
+                            d7 = check_lowest_value_card(computer_hand)
+                            comp_set_play(False, d7, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                elif a.suit == c.suit and c.suit != b.suit:
+                    if have_suits(computer_hand, a.suit):
+                        d8 = check_least_high_card(compare_cards(a, c), computer_hand)
+                        if d8 is not None:
+                            comp_set_play(False, d8, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                        elif d8 is None:
+                            d9 = check_lowest_value_card_of_suit(computer_hand, a.suit)
+                            comp_set_play(False, d9, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                    elif have_suits(computer_hand, a.suit) is False:
+                        if len(comp_trumps) > 0:
+                            d10 = check_lowest_value_card(comp_trumps)
+                            comp_set_play(True, d10, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                        elif len(comp_trumps) == 0:
+                            d11 = check_lowest_value_card(computer_hand)
+                            comp_set_play(False, d11, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                elif a.suit != b.suit and b.suit == c.suit:
+                    if have_suits(computer_hand, a.suit):
+                        m = check_least_high_card(a, computer_hand)
+                        if m is not None:
+                            comp_set_play(False, m, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                        elif m is None:
+                            m1 = check_lowest_value_card_of_suit(computer_hand, a.suit)
+                            comp_set_play(False, m1, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                    elif have_suits(computer_hand, a.suit) is False:
+                        if len(comp_trumps) > 0:
+                            m2 = check_lowest_value_card(comp_trumps)
+                            comp_set_play(True, m2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                        elif len(comp_trumps) == 0:
+                            m3 = check_lowest_value_card(computer_hand)
+                            comp_set_play(False, m3, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                elif a.suit != b.suit != c.suit:
+                    if have_suits(computer_hand, a.suit):
+                        d12 = check_least_high_card(a, computer_hand)
+                        if d12 is not None:
+                            comp_set_play(False, d12, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                        elif d12 is None:
+                            d13 = check_lowest_value_card_of_suit(computer_hand, a.suit)
+                            comp_set_play(False, d13, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                    elif have_suits(computer_hand, a.suit) is False:
+                        if len(comp_trumps) > 0:
+                            d14 = check_lowest_value_card(comp_trumps)
+                            comp_set_play(True, d14, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                        elif len(comp_trumps) == 0:
+                            d15 = check_lowest_value_card(computer_hand)
+                            comp_set_play(False, d15, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+            if a.suit != trump and b.suit != trump and c.suit == trump:
                 if have_suits(computer_hand, a.suit):
-                    d = compare_cards(compare_cards(a, b), c)
-                    d0 = check_least_high_card(d, computer_hand)
-                    if d0 is not None:
-                        comp_set_play(False, d0, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-                    elif d0 is None:
-                        d1 = check_lowest_value_card_of_suit(computer_hand, a.suit)
-                        comp_set_play(False, d1, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                    e = check_lowest_value_card_of_suit(computer_hand, a.suit)
+                    comp_set_play(False, e, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
                 elif have_suits(computer_hand, a.suit) is False:
                     if len(comp_trumps) > 0:
-                        d2 = check_lowest_value_card(comp_trumps)
-                        comp_set_play(True, d2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                        e1 = check_least_high_card(c, comp_trumps)
+                        if e1 is not None:
+                            comp_set_play(True, e1, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                        elif e1 is None:
+                            e2 = check_lowest_value_card(computer_hand)
+                            comp_set_play(False, e2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
                     elif len(comp_trumps) == 0:
-                        d3 = check_lowest_value_card(computer_hand)
-                        comp_set_play(False, d3, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-            elif a.suit == b.suit and b.suit != c.suit:
+                        e3 = check_lowest_value_card(computer_hand)
+                        comp_set_play(False, e3, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+            if a.suit != trump and b.suit == trump and c.suit != trump:
                 if have_suits(computer_hand, a.suit):
-                    d4 = check_least_high_card(compare_cards(a, b), computer_hand)
-                    if d4 is not None:
-                        comp_set_play(False, d4, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-                    elif d4 is None:
-                        d5 = check_lowest_value_card_of_suit(computer_hand, a.suit)
-                        comp_set_play(False, d5, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                    f = check_lowest_value_card_of_suit(computer_hand, a.suit)
+                    comp_set_play(False, f, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
                 elif have_suits(computer_hand, a.suit) is False:
                     if len(comp_trumps) > 0:
-                        d6 = check_lowest_value_card(comp_trumps)
-                        comp_set_play(True, d6, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                        f1 = check_least_high_card(b, comp_trumps)
+                        if f1 is not None:
+                            comp_set_play(True, f1, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                        elif f1 is None:
+                            f2 = check_lowest_value_card(comp_trumps)
+                            comp_set_play(True, f2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
                     elif len(comp_trumps) == 0:
-                        d7 = check_lowest_value_card(computer_hand)
-                        comp_set_play(False, d7, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-            elif a.suit == c.suit and c.suit != b.suit:
-                if have_suits(computer_hand, a.suit):
-                    d8 = check_least_high_card(compare_cards(a, c), computer_hand)
-                    if d8 is not None:
-                        comp_set_play(False, d8, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-                    elif d8 is None:
-                        d9 = check_lowest_value_card_of_suit(computer_hand, a.suit)
-                        comp_set_play(False, d9, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-                elif have_suits(computer_hand, a.suit) is False:
-                    if len(comp_trumps) > 0:
-                        d10 = check_lowest_value_card(comp_trumps)
-                        comp_set_play(True, d10, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-                    elif len(comp_trumps) == 0:
-                        d11 = check_lowest_value_card(computer_hand)
-                        comp_set_play(False, d11, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-            elif a.suit != b.suit and b.suit == c.suit:
-                if have_suits(computer_hand, a.suit):
-                    m = check_least_high_card(a, computer_hand)
-                    if m is not None:
-                        comp_set_play(False, m, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-                    elif m is None:
-                        m1 = check_lowest_value_card_of_suit(computer_hand, a.suit)
-                        comp_set_play(False, m1, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-                elif have_suits(computer_hand, a.suit) is False:
-                    if len(comp_trumps) > 0:
-                        m2 = check_lowest_value_card(comp_trumps)
-                        comp_set_play(True, m2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-                    elif len(comp_trumps) == 0:
-                        m3 = check_lowest_value_card(computer_hand)
-                        comp_set_play(False, m3, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-            elif a.suit != b.suit != c.suit:
-                if have_suits(computer_hand, a.suit):
-                    d12 = check_least_high_card(a, computer_hand)
-                    if d12 is not None:
-                        comp_set_play(False, d12, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-                    elif d12 is None:
-                        d13 = check_lowest_value_card_of_suit(computer_hand, a.suit)
-                        comp_set_play(False, d13, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-                elif have_suits(computer_hand, a.suit) is False:
-                    if len(comp_trumps) > 0:
-                        d14 = check_lowest_value_card(comp_trumps)
-                        comp_set_play(True, d14, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-                    elif len(comp_trumps) == 0:
-                        d15 = check_lowest_value_card(computer_hand)
-                        comp_set_play(False, d15, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-        if a.suit != trump and b.suit != trump and c.suit == trump:
-            if have_suits(computer_hand, a.suit):
-                e = check_lowest_value_card_of_suit(computer_hand, a.suit)
-                comp_set_play(False, e, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-            elif have_suits(computer_hand, a.suit) is False:
+                        f3 = check_lowest_value_card(computer_hand)
+                        comp_set_play(False, f3, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+            if a.suit == trump and b.suit != trump and c.suit != trump:
                 if len(comp_trumps) > 0:
-                    e1 = check_least_high_card(c, comp_trumps)
-                    if e1 is not None:
-                        comp_set_play(True, e1, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-                    elif e1 is None:
-                        e2 = check_lowest_value_card(computer_hand)
-                        comp_set_play(False, e2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                    g = check_least_high_card(a, comp_trumps)
+                    if g is not None:
+                        comp_set_play(True, g, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                    elif g is None:
+                        g1 = check_lowest_value_card(comp_trumps)
+                        comp_set_play(True, g1, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
                 elif len(comp_trumps) == 0:
-                    e3 = check_lowest_value_card(computer_hand)
-                    comp_set_play(False, e3, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-        if a.suit != trump and b.suit == trump and c.suit != trump:
-            if have_suits(computer_hand, a.suit):
-                f = check_lowest_value_card_of_suit(computer_hand, a.suit)
-                comp_set_play(False, f, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-            elif have_suits(computer_hand, a.suit) is False:
+                    g2 = check_lowest_value_card(computer_hand)
+                    comp_set_play(False, g2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+            if a.suit == trump and b.suit == trump and c.suit != trump:
                 if len(comp_trumps) > 0:
-                    f1 = check_least_high_card(b, comp_trumps)
-                    if f1 is not None:
-                        comp_set_play(True, f1, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-                    elif f1 is None:
-                        f2 = check_lowest_value_card(computer_hand)
-                        comp_set_play(False, f2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                    h = check_least_high_card(compare_cards(a, b), comp_trumps)
+                    if h is not None:
+                        comp_set_play(True, h, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                    if h is None:
+                        h1 = check_lowest_value_card(comp_trumps)
+                        comp_set_play(True, h1, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
                 elif len(comp_trumps) == 0:
-                    f3 = check_lowest_value_card(computer_hand)
-                    comp_set_play(False, f3, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-        if a.suit == trump and b.suit != trump and c.suit != trump:
-            if len(comp_trumps) > 0:
-                g = check_least_high_card(a, comp_trumps)
-                if g is not None:
-                    comp_set_play(True, g, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-                elif g is None:
-                    g1 = check_lowest_value_card(comp_trumps)
-                    comp_set_play(True, g1, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-            elif len(comp_trumps) == 0:
-                g2 = check_lowest_value_card(computer_hand)
-                comp_set_play(False, g2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-        if a.suit == trump and b.suit == trump and c.suit != trump:
-            if len(comp_trumps) > 0:
-                h = check_least_high_card(compare_cards(a, b), comp_trumps)
-                if h is not None:
-                    comp_set_play(True, h, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-                if h is None:
-                    h1 = check_lowest_value_card(comp_trumps)
-                    comp_set_play(True, h1, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-            elif len(comp_trumps) == 0:
-                h2 = check_lowest_value_card(computer_hand)
-                comp_set_play(False, h2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-        if a.suit == trump and b.suit != trump and c.suit == trump:
-            if len(comp_trumps) > 0:
-                i = check_least_high_card(compare_cards(a, c), comp_trumps)
-                if i is not None:
-                    comp_set_play(True, i, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-                if i is None:
-                    i1 = check_lowest_value_card(comp_trumps)
-                    comp_set_play(True, i1, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-            elif len(comp_trumps) == 0:
-                i2 = check_lowest_value_card(computer_hand)
-                comp_set_play(False, i2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-        if a.suit != trump and b.suit == trump and c.suit == trump:
-            if len(comp_trumps) > 0:
-                j = check_least_high_card(compare_cards(b, c), comp_trumps)
-                if j is not None:
-                    comp_set_play(True, j, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-                if j is None:
-                    j1 = check_lowest_value_card(comp_trumps)
-                    comp_set_play(True, j1, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-            elif len(comp_trumps) == 0:
-                j2 = check_lowest_value_card(computer_hand)
-                comp_set_play(False, j2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-        if a.suit == trump and b.suit == trump and c.suit == trump:
-            if len(comp_trumps) > 0:
-                k = check_least_high_card(compare_cards(compare_cards(a, b), c), comp_trumps)
-                if k is not None:
-                    comp_set_play(True, k, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-                if k is None:
-                    k1 = check_lowest_value_card(comp_trumps)
-                    comp_set_play(True, k1, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
-            elif len(comp_trumps) == 0:
-                k2 = check_lowest_value_card(computer_hand)
-                comp_set_play(False, k2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                    h2 = check_lowest_value_card(computer_hand)
+                    comp_set_play(False, h2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+            if a.suit == trump and b.suit != trump and c.suit == trump:
+                if len(comp_trumps) > 0:
+                    i = check_least_high_card(compare_cards(a, c), comp_trumps)
+                    if i is not None:
+                        comp_set_play(True, i, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                    if i is None:
+                        i1 = check_lowest_value_card(comp_trumps)
+                        comp_set_play(True, i1, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                elif len(comp_trumps) == 0:
+                    i2 = check_lowest_value_card(computer_hand)
+                    comp_set_play(False, i2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+            if a.suit != trump and b.suit == trump and c.suit == trump:
+                if len(comp_trumps) > 0:
+                    j = check_least_high_card(compare_cards(b, c), comp_trumps)
+                    if j is not None:
+                        comp_set_play(True, j, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                    if j is None:
+                        j1 = check_lowest_value_card(comp_trumps)
+                        comp_set_play(True, j1, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                elif len(comp_trumps) == 0:
+                    j2 = check_lowest_value_card(computer_hand)
+                    comp_set_play(False, j2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+            if a.suit == trump and b.suit == trump and c.suit == trump:
+                if len(comp_trumps) > 0:
+                    k = check_least_high_card(compare_cards(compare_cards(a, b), c), comp_trumps)
+                    if k is not None:
+                        comp_set_play(True, k, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                    if k is None:
+                        k1 = check_lowest_value_card(comp_trumps)
+                        comp_set_play(True, k1, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+                elif len(comp_trumps) == 0:
+                    k2 = check_lowest_value_card(computer_hand)
+                    comp_set_play(False, k2, x_limit, cards, cards, cards, card_pos, card_pos, ply_tm_card_pos)
+        elif c_pos == rnd and p_pos == rnd and ct_pos == rnd + 1 and pt_pos == rnd + 1:
+            s = comp_teammate_played_hands[rnd]
+            h = player_teammate_played_hands[rnd]
+            if s.suit != trump and h.suit != trump:
+                if s.suit == h.suit:
+                    if have_suits(computer_hand, s.suit):
+                        m = check_least_high_card(compare_cards(s, h), computer_hand)
+                        if m is not None:
+                            comp_set_play(False, m, x_limit + 75, cards, cards, cards, card_pos, card_pos,
+                                          ply_tm_card_pos)
+                        elif m is None:
+                            m1 = check_lowest_value_card_of_suit(computer_hand, s.suit)
+                            comp_set_play(False, m1, x_limit + 75, cards, cards, cards, card_pos, card_pos,
+                                          ply_tm_card_pos)
+                    elif have_suits(computer_hand, s.suit) is False:
+                        if len(comp_trumps) > 0:
+                            m2 = check_lowest_value_card(comp_trumps)
+                            comp_set_play(True, m2, x_limit + 75, cards, cards, cards, card_pos, card_pos,
+                                          ply_tm_card_pos)
+                        elif len(player_teammate_trumps) == 0:
+                            m3 = check_lowest_value_card(computer_hand)
+                            comp_set_play(False, m3, x_limit + 75, cards, cards, cards, card_pos, card_pos,
+                                          ply_tm_card_pos)
+                elif s.suit != h.suit:
+                    if have_suits(computer_hand, s.suit):
+                        m4 = check_least_high_card(s, computer_hand)
+                        if m4 is not None:
+                            comp_set_play(False, m4, x_limit + 75, cards, cards, cards, card_pos, card_pos,
+                                          ply_tm_card_pos)
+                        if m4 is None:
+                            m5 = check_lowest_value_card_of_suit(computer_hand, s.suit)
+                            comp_set_play(False, m5, x_limit + 75, cards, cards, cards, card_pos, card_pos,
+                                          ply_tm_card_pos)
+                    elif have_suits(computer_hand, s.suit) is False:
+                        if len(comp_trumps) > 0:
+                            m6 = check_lowest_value_card(comp_trumps)
+                            comp_set_play(True, m6, x_limit + 75, cards, cards, cards, card_pos, card_pos,
+                                          ply_tm_card_pos)
+                        elif len(comp_trumps) == 0:
+                            m7 = check_lowest_value_card(computer_hand)
+                            comp_set_play(False, m7, x_limit + 75, cards, cards, cards, card_pos, card_pos,
+                                          ply_tm_card_pos)
+            if s.suit != trump and h.suit == trump:
+                if have_suits(computer_hand, s.suit):
+                    n = check_lowest_value_card_of_suit(computer_hand, s.suit)
+                    comp_set_play(False, n, x_limit + 75, cards, cards, cards, card_pos, card_pos,
+                                  ply_tm_card_pos)
+                elif have_suits(computer_hand, s.suit) is False:
+                    if len(comp_trumps) > 0:
+                        n1 = check_least_high_card(h, comp_trumps)
+                        if n1 is not None:
+                            comp_set_play(True, n1, x_limit + 75, cards, cards, cards, card_pos, card_pos,
+                                          ply_tm_card_pos)
+                        if n1 is None:
+                            n2 = check_lowest_value_card(comp_trumps)
+                            comp_set_play(True, n2, x_limit + 75, cards, cards, cards, card_pos, card_pos,
+                                          ply_tm_card_pos)
+                    elif len(comp_trumps) == 0:
+                        n3 = check_lowest_value_card(computer_hand)
+                        comp_set_play(False, n3, x_limit + 75, cards, cards, cards, card_pos, card_pos,
+                                      ply_tm_card_pos)
+            if s.suit == trump and h.suit != trump:
+                if len(comp_trumps) > 0:
+                    o = check_least_high_card(s, comp_trumps)
+                    if o is not None:
+                        comp_set_play(True, o, x_limit + 75, cards, cards, cards, card_pos, card_pos,
+                                      ply_tm_card_pos)
+                    elif o is None:
+                        o1 = check_lowest_value_card(comp_trumps)
+                        comp_set_play(True, o1, x_limit + 75, cards, cards, cards, card_pos, card_pos,
+                                      ply_tm_card_pos)
+                elif len(comp_trumps) == 0:
+                    o2 = check_lowest_value_card(computer_hand)
+                    comp_set_play(False, o2, x_limit + 75, cards, cards, cards, card_pos, card_pos,
+                                  ply_tm_card_pos)
+            if s.suit == trump and h.suit == trump:
+                if len(comp_trumps) > 0:
+                    p = check_least_high_card(compare_cards(s, h), comp_trumps)
+                    if p is not None:
+                        comp_set_play(True, p, x_limit + 75, cards, cards, cards, card_pos, card_pos,
+                                      ply_tm_card_pos)
+                    elif p is None:
+                        p1 = check_lowest_value_card(comp_trumps)
+                        comp_set_play(True, p1, x_limit + 75, cards, cards, cards, card_pos, card_pos,
+                                      ply_tm_card_pos)
+                elif len(comp_trumps) == 0:
+                    p2 = check_lowest_value_card(computer_hand)
+                    comp_set_play(False, p2, x_limit + 75, cards, cards, cards, card_pos, card_pos,
+                                  ply_tm_card_pos)
+        elif c_pos == rnd and p_pos == rnd and ct_pos == rnd and pt_pos == rnd + 1:
+            s = player_teammate_played_hands[rnd]
+            if s.suit != trump:
+                if have_suits(computer_hand, s.suit):
+                    t = check_least_high_card(s, computer_hand)
+                    if t is not None:
+                        comp_set_play(False, t, x_limit + 75, cards, cards + 1, cards, card_pos, card_pos + 20,
+                                      ply_tm_card_pos)
+                    elif t is None:
+                        t1 = check_lowest_value_card_of_suit(computer_hand, s.suit)
+                        comp_set_play(False, t1, x_limit + 75, cards, cards + 1, cards, card_pos, card_pos + 20,
+                                      ply_tm_card_pos)
+                elif have_suits(computer_hand, s.suit) is False:
+                    if len(comp_trumps) > 0:
+                        u = check_lowest_value_card(comp_trumps)
+                        comp_set_play(True, u, x_limit + 75, cards, cards + 1, cards, card_pos, card_pos + 20,
+                                      ply_tm_card_pos)
+                    elif len(comp_trumps) == 0:
+                        v = check_lowest_value_card(computer_hand)
+                        comp_set_play(False, v, x_limit + 75, cards, cards + 1, cards, card_pos, card_pos + 20,
+                                      ply_tm_card_pos)
+            elif s.suit == trump:
+                if len(comp_trumps) > 0:
+                    w = check_least_high_card(s, comp_trumps)
+                    if w is not None:
+                        comp_set_play(True, w, x_limit + 75, cards, cards + 1, cards, card_pos, card_pos + 20,
+                                      ply_tm_card_pos)
+                    if w is None:
+                        x = check_lowest_value_card(comp_trumps)
+                        comp_set_play(True, x, x_limit + 75, cards, cards + 1, cards, card_pos, card_pos + 20,
+                                      ply_tm_card_pos)
+                elif len(comp_trumps) == 0:
+                    y = check_lowest_value_card(computer_hand)
+                    comp_set_play(False, y, x_limit + 75, cards, cards + 1, cards, card_pos, card_pos + 20,
+                                  ply_tm_card_pos)
+        elif c_pos == rnd and p_pos == rnd and ct_pos == rnd and pt_pos == rnd:
+            if len(computer_hand) == 0:
+                kk_1 = random.choice(comp_trumps)
+                comp_set_play(True, kk_1, x_limit + 75, cards, cards + 1, cards + 1, card_pos, card_pos + 20,
+                              ply_tm_card_pos)
+            if len(computer_hand) > 0:
+                k = random.choice(computer_hand)
+                comp_set_play(False, k, x_limit + 75, cards, cards + 1, cards + 1, card_pos, card_pos + 20,
+                              ply_tm_card_pos)
 
 
 def check_won_hand(rnd):
@@ -1122,8 +1511,7 @@ def check_won_hand(rnd):
     compare_list.append(c)
     d = player_teammate_played_hands[rnd]
     compare_list.append(d)
-    # if comp_round_done and player_round_done and comp_tm_round_done and player_tm_round_done:
-    if comp_trump_selected:
+    if (comp_trump_selected and winner is None)or winner == 'comp':
         if a.suit != trump and b.suit != trump and c.suit != trump and d.suit != trump:
             e = check_highest_value_card_of_suit(compare_list, a.suit)
             if e == a:
@@ -1256,7 +1644,7 @@ def check_won_hand(rnd):
             elif f4 == d:
                 player_tm_won_hands += 1
                 return 'player_tm'
-    elif player_trump_selected:
+    elif (player_trump_selected and winner is None) or winner == 'player':
         if a.suit != trump and b.suit != trump and c.suit != trump and d.suit != trump:
             e = check_highest_value_card_of_suit(compare_list, b.suit)
             if e == a:
@@ -1389,16 +1777,272 @@ def check_won_hand(rnd):
             elif f4 == d:
                 player_tm_won_hands += 1
                 return 'player_tm'
-
-
-x1 = 90
-y1 = 260
-x2 = 250
-y2 = 480
-x3 = 820
-y3 = 260
-x4 = 250
-y4 = 130
+    elif (player_trump_selected or comp_trump_selected) and winner == 'comp_tm':
+        if a.suit != trump and b.suit != trump and c.suit != trump and d.suit != trump:
+            e = check_highest_value_card_of_suit(compare_list, c.suit)
+            if e == a:
+                comp_won_hands += 1
+                return 'comp'
+            elif e == b:
+                player_won_hands += 1
+                return 'player'
+            elif e == c:
+                comp_tm_won_hands += 1
+                return 'comp_tm'
+            elif e == d:
+                player_tm_won_hands += 1
+                return 'player_tm'
+        elif a.suit != trump and b.suit != trump and c.suit != trump and d.suit == trump:
+            player_tm_won_hands += 1
+            return 'player_tm'
+        elif a.suit != trump and b.suit != trump and c.suit == trump and d.suit != trump:
+            comp_tm_won_hands += 1
+            return 'comp_tm'
+        elif a.suit != trump and b.suit == trump and c.suit != trump and d.suit != trump:
+            player_won_hands += 1
+            return 'player'
+        elif a.suit == trump and b.suit != trump and c.suit != trump and d.suit != trump:
+            comp_won_hands += 1
+            return 'comp'
+        elif a.suit == trump and b.suit == trump and c.suit != trump and d.suit != trump:
+            e1 = compare_cards(a, b)
+            if e1 == a:
+                comp_won_hands += 1
+                return 'comp'
+            elif e1 == b:
+                player_won_hands += 1
+                return 'player'
+        elif a.suit == trump and b.suit != trump and c.suit == trump and d.suit != trump:
+            e2 = compare_cards(a, c)
+            if e2 == a:
+                comp_won_hands += 1
+                return 'comp'
+            elif e2 == c:
+                comp_tm_won_hands += 1
+                return 'comp_tm'
+        elif a.suit == trump and b.suit != trump and c.suit != trump and d.suit == trump:
+            e3 = compare_cards(a, d)
+            if e3 == a:
+                comp_won_hands += 1
+                return 'comp'
+            elif e3 == d:
+                player_tm_won_hands += 1
+                return 'player_tm'
+        elif a.suit != trump and b.suit == trump and c.suit == trump and d.suit != trump:
+            e4 = compare_cards(b, c)
+            if e4 == b:
+                player_won_hands += 1
+                return 'player'
+            elif e4 == c:
+                comp_tm_won_hands += 1
+                return 'comp_tm'
+        elif a.suit != trump and b.suit == trump and c.suit != trump and d.suit == trump:
+            e5 = compare_cards(b, d)
+            if e5 == b:
+                player_won_hands += 1
+                return 'player'
+            elif e5 == d:
+                player_tm_won_hands += 1
+                return 'player_tm'
+        elif a.suit != trump and b.suit != trump and c.suit == trump and d.suit == trump:
+            e6 = compare_cards(c, d)
+            if e6 == c:
+                comp_tm_won_hands += 1
+                return 'comp_tm'
+            elif e6 == d:
+                player_tm_won_hands += 1
+                return 'player_tm'
+        elif a.suit == trump and b.suit == trump and c.suit == trump and d.suit != trump:
+            f = compare_cards(compare_cards(a, b), c)
+            if f == a:
+                comp_won_hands += 1
+                return 'comp'
+            elif f == b:
+                player_won_hands += 1
+                return 'player'
+            elif f == c:
+                comp_tm_won_hands += 1
+                return 'comp_tm'
+        elif a.suit == trump and b.suit == trump and c.suit != trump and d.suit == trump:
+            f1 = compare_cards(compare_cards(a, b), d)
+            if f1 == a:
+                comp_won_hands += 1
+                return 'comp'
+            elif f1 == b:
+                player_won_hands += 1
+                return 'player'
+            elif f1 == d:
+                player_tm_won_hands += 1
+                return 'player_tm'
+        elif a.suit == trump and b.suit != trump and c.suit == trump and d.suit == trump:
+            f2 = compare_cards(compare_cards(a, c), d)
+            if f2 == a:
+                comp_won_hands += 1
+                return 'comp'
+            elif f2 == c:
+                comp_tm_won_hands += 1
+                return 'comp_tm'
+            elif f2 == d:
+                player_tm_won_hands += 1
+                return 'player_tm'
+        elif a.suit != trump and b.suit == trump and c.suit == trump and d.suit == trump:
+            f3 = compare_cards(compare_cards(b, c), d)
+            if f3 == b:
+                player_won_hands += 1
+                return 'player'
+            elif f3 == c:
+                comp_tm_won_hands += 1
+                return 'comp_tm'
+            elif f3 == d:
+                player_tm_won_hands += 1
+                return 'player_tm'
+        elif a.suit == trump and b.suit == trump and c.suit == trump and d.suit == trump:
+            f4 = check_highest_value_card(compare_list)
+            if f4 == a:
+                comp_won_hands += 1
+                return 'comp'
+            elif f4 == b:
+                player_won_hands += 1
+                return 'player'
+            elif f4 == c:
+                comp_tm_won_hands += 1
+                return 'comp_tm'
+            elif f4 == d:
+                player_tm_won_hands += 1
+                return 'player_tm'
+    elif (player_trump_selected or comp_trump_selected) and winner == 'player_tm':
+        if a.suit != trump and b.suit != trump and c.suit != trump and d.suit != trump:
+            e = check_highest_value_card_of_suit(compare_list, d.suit)
+            if e == a:
+                comp_won_hands += 1
+                return 'comp'
+            elif e == b:
+                player_won_hands += 1
+                return 'player'
+            elif e == c:
+                comp_tm_won_hands += 1
+                return 'comp_tm'
+            elif e == d:
+                player_tm_won_hands += 1
+                return 'player_tm'
+        elif a.suit != trump and b.suit != trump and c.suit != trump and d.suit == trump:
+            player_tm_won_hands += 1
+            return 'player_tm'
+        elif a.suit != trump and b.suit != trump and c.suit == trump and d.suit != trump:
+            comp_tm_won_hands += 1
+            return 'comp_tm'
+        elif a.suit != trump and b.suit == trump and c.suit != trump and d.suit != trump:
+            player_won_hands += 1
+            return 'player'
+        elif a.suit == trump and b.suit != trump and c.suit != trump and d.suit != trump:
+            comp_won_hands += 1
+            return 'comp'
+        elif a.suit == trump and b.suit == trump and c.suit != trump and d.suit != trump:
+            e1 = compare_cards(a, b)
+            if e1 == a:
+                comp_won_hands += 1
+                return 'comp'
+            elif e1 == b:
+                player_won_hands += 1
+                return 'player'
+        elif a.suit == trump and b.suit != trump and c.suit == trump and d.suit != trump:
+            e2 = compare_cards(a, c)
+            if e2 == a:
+                comp_won_hands += 1
+                return 'comp'
+            elif e2 == c:
+                comp_tm_won_hands += 1
+                return 'comp_tm'
+        elif a.suit == trump and b.suit != trump and c.suit != trump and d.suit == trump:
+            e3 = compare_cards(a, d)
+            if e3 == a:
+                comp_won_hands += 1
+                return 'comp'
+            elif e3 == d:
+                player_tm_won_hands += 1
+                return 'player_tm'
+        elif a.suit != trump and b.suit == trump and c.suit == trump and d.suit != trump:
+            e4 = compare_cards(b, c)
+            if e4 == b:
+                player_won_hands += 1
+                return 'player'
+            elif e4 == c:
+                comp_tm_won_hands += 1
+                return 'comp_tm'
+        elif a.suit != trump and b.suit == trump and c.suit != trump and d.suit == trump:
+            e5 = compare_cards(b, d)
+            if e5 == b:
+                player_won_hands += 1
+                return 'player'
+            elif e5 == d:
+                player_tm_won_hands += 1
+                return 'player_tm'
+        elif a.suit != trump and b.suit != trump and c.suit == trump and d.suit == trump:
+            e6 = compare_cards(c, d)
+            if e6 == c:
+                comp_tm_won_hands += 1
+                return 'comp_tm'
+            elif e6 == d:
+                player_tm_won_hands += 1
+                return 'player_tm'
+        elif a.suit == trump and b.suit == trump and c.suit == trump and d.suit != trump:
+            f = compare_cards(compare_cards(a, b), c)
+            if f == a:
+                comp_won_hands += 1
+                return 'comp'
+            elif f == b:
+                player_won_hands += 1
+                return 'player'
+            elif f == c:
+                comp_tm_won_hands += 1
+                return 'comp_tm'
+        elif a.suit == trump and b.suit == trump and c.suit != trump and d.suit == trump:
+            f1 = compare_cards(compare_cards(a, b), d)
+            if f1 == a:
+                comp_won_hands += 1
+                return 'comp'
+            elif f1 == b:
+                player_won_hands += 1
+                return 'player'
+            elif f1 == d:
+                player_tm_won_hands += 1
+                return 'player_tm'
+        elif a.suit == trump and b.suit != trump and c.suit == trump and d.suit == trump:
+            f2 = compare_cards(compare_cards(a, c), d)
+            if f2 == a:
+                comp_won_hands += 1
+                return 'comp'
+            elif f2 == c:
+                comp_tm_won_hands += 1
+                return 'comp_tm'
+            elif f2 == d:
+                player_tm_won_hands += 1
+                return 'player_tm'
+        elif a.suit != trump and b.suit == trump and c.suit == trump and d.suit == trump:
+            f3 = compare_cards(compare_cards(b, c), d)
+            if f3 == b:
+                player_won_hands += 1
+                return 'player'
+            elif f3 == c:
+                comp_tm_won_hands += 1
+                return 'comp_tm'
+            elif f3 == d:
+                player_tm_won_hands += 1
+                return 'player_tm'
+        elif a.suit == trump and b.suit == trump and c.suit == trump and d.suit == trump:
+            f4 = check_highest_value_card(compare_list)
+            if f4 == a:
+                comp_won_hands += 1
+                return 'comp'
+            elif f4 == b:
+                player_won_hands += 1
+                return 'player'
+            elif f4 == c:
+                comp_tm_won_hands += 1
+                return 'comp_tm'
+            elif f4 == d:
+                player_tm_won_hands += 1
+                return 'player_tm'
 
 
 def comp_win_cords():
@@ -1463,130 +2107,181 @@ def set_won_hand(rnd, hand_winner):
     if comp_trump_selected:
         if hand_winner == 'comp':
             match_cards(comp_played_hands[rnd], x1, y1)
-            match_cards(player_played_hands[rnd], x1+10, y1)
-            match_cards(comp_teammate_played_hands[rnd], x1+20, y1)
-            match_cards(player_teammate_played_hands[rnd], x1+30, y1)
+            match_cards(player_played_hands[rnd], x1 + 10, y1)
+            match_cards(comp_teammate_played_hands[rnd], x1 + 20, y1)
+            match_cards(player_teammate_played_hands[rnd], x1 + 30, y1)
             comp_win_cords()
         elif hand_winner == 'player':
             match_cards(comp_played_hands[rnd], x2, y2)
-            match_cards(player_played_hands[rnd], x2+10, y2)
-            match_cards(comp_teammate_played_hands[rnd], x2+20, y2)
-            match_cards(player_teammate_played_hands[rnd], x2+30, y2)
+            match_cards(player_played_hands[rnd], x2 + 10, y2)
+            match_cards(comp_teammate_played_hands[rnd], x2 + 20, y2)
+            match_cards(player_teammate_played_hands[rnd], x2 + 30, y2)
             player_win_cord()
         elif hand_winner == 'comp_tm':
             match_cards(comp_played_hands[rnd], x3, y3)
-            match_cards(player_played_hands[rnd], x3+10, y3)
-            match_cards(comp_teammate_played_hands[rnd], x3+20, y3)
-            match_cards(player_teammate_played_hands[rnd], x3+30, y3)
+            match_cards(player_played_hands[rnd], x3 + 10, y3)
+            match_cards(comp_teammate_played_hands[rnd], x3 + 20, y3)
+            match_cards(player_teammate_played_hands[rnd], x3 + 30, y3)
             comp_tm_win_cords()
         elif hand_winner == 'player_tm':
             match_cards(comp_played_hands[rnd], x4, y4)
-            match_cards(player_played_hands[rnd], x4+10, y4)
-            match_cards(comp_teammate_played_hands[rnd], x4+20, y4)
-            match_cards(player_teammate_played_hands[rnd], x4+30, y4)
+            match_cards(player_played_hands[rnd], x4 + 10, y4)
+            match_cards(comp_teammate_played_hands[rnd], x4 + 20, y4)
+            match_cards(player_teammate_played_hands[rnd], x4 + 30, y4)
             player_tm_win_cord()
     elif player_trump_selected:
         if hand_winner == 'comp':
             match_cards(player_played_hands[rnd], x1, y1)
-            match_cards(comp_teammate_played_hands[rnd], x1+10, y1)
-            match_cards(player_teammate_played_hands[rnd], x1+20, y1)
-            match_cards(comp_played_hands[rnd], x1+30, y1)
+            match_cards(comp_teammate_played_hands[rnd], x1 + 10, y1)
+            match_cards(player_teammate_played_hands[rnd], x1 + 20, y1)
+            match_cards(comp_played_hands[rnd], x1 + 30, y1)
             comp_win_cords()
         elif hand_winner == 'player':
             match_cards(player_played_hands[rnd], x2, y2)
-            match_cards(comp_teammate_played_hands[rnd], x2+10, y2)
-            match_cards(player_teammate_played_hands[rnd], x2+20, y2)
-            match_cards(comp_played_hands[rnd], x2+30, y2)
+            match_cards(comp_teammate_played_hands[rnd], x2 + 10, y2)
+            match_cards(player_teammate_played_hands[rnd], x2 + 20, y2)
+            match_cards(comp_played_hands[rnd], x2 + 30, y2)
             player_win_cord()
         elif hand_winner == 'comp_tm':
             match_cards(player_played_hands[rnd], x3, y3)
-            match_cards(comp_teammate_played_hands[rnd], x3+10, y3)
-            match_cards(player_teammate_played_hands[rnd], x3+20, y3)
-            match_cards(comp_played_hands[rnd], x3+30, y3)
+            match_cards(comp_teammate_played_hands[rnd], x3 + 10, y3)
+            match_cards(player_teammate_played_hands[rnd], x3 + 20, y3)
+            match_cards(comp_played_hands[rnd], x3 + 30, y3)
             comp_tm_win_cords()
         elif hand_winner == 'player_tm':
             match_cards(player_played_hands[rnd], x4, y4)
-            match_cards(comp_teammate_played_hands[rnd], x4+10, y4)
-            match_cards(player_teammate_played_hands[rnd], x4+20, y4)
-            match_cards(comp_played_hands[rnd], x4+30, y4)
+            match_cards(comp_teammate_played_hands[rnd], x4 + 10, y4)
+            match_cards(player_teammate_played_hands[rnd], x4 + 20, y4)
+            match_cards(comp_played_hands[rnd], x4 + 30, y4)
             player_tm_win_cord()
 
 
+def each_player_round_done():
+    global comp_round_done, player_round_done, comp_tm_round_done, player_tm_round_done
+    if comp_round_done and player_round_done and comp_tm_round_done and player_tm_round_done:
+        return True
+    return False
+
+
 def play_round(rnd):
-    global round_status
-    x_limit = 920 - (75*rnd)
+    global round_status, winner
+    x_limit = 920 - (75 * rnd)
     turn = 14 - rnd
     c1 = 14 - rnd
     c2 = 14 - rnd
     c3 = 14 - rnd
-    c1_pos = 410 - (20*rnd)
-    c2_pos = 410 - (20*rnd)
-    c3_pos = 610 - (20*rnd)
-    if comp_trump_selected and comp_round_done is False:
+    c1_pos = 410 - (20 * rnd)
+    c2_pos = 410 - (20 * rnd)
+    c3_pos = 610 - (20 * rnd)
+    if comp_trump_selected and comp_round_done is False and winner is None:
         comp_play(True, rnd, c3_pos)
-    if player_trump_selected and player_round_done is False:
-        player_play(True, rnd, turn, x_limit, c1, c2, c3,  c1_pos, c2_pos, c3_pos)
-    if comp_round_done and player_round_done is False:
-        player_play(False, rnd, turn, x_limit, c1-1, c2, c3, c1_pos-20, c2_pos, c3_pos)
+    if player_trump_selected and player_round_done is False and winner is None:
+        player_play(True, rnd, turn, x_limit, c1, c2, c3, c1_pos, c2_pos, c3_pos)
+    if comp_round_done and player_round_done is False and winner is None:
+        player_play(False, rnd, turn, x_limit, c1 - 1, c2, c3, c1_pos - 20, c2_pos, c3_pos)
         if player_round_done:
-            comp_tm_play(True, rnd, c3_pos)
+            comp_tm_play(rnd, c3_pos)
             if comp_tm_round_done:
-                player_tm_play(True, rnd, c3_pos-20)
-    if player_round_done and comp_round_done is False:
+                player_tm_play(rnd, c3_pos - 20)
+    if player_round_done and comp_round_done is False and winner is None:
         if comp_tm_round_done is False:
-            comp_tm_play(False, rnd, c3_pos)
+            comp_tm_play(rnd, c3_pos)
             if comp_tm_round_done:
-                player_tm_play(False, rnd, c3_pos-20)
+                player_tm_play(rnd, c3_pos - 20)
                 if player_tm_round_done:
-                    comp_play(False, rnd, c3_pos-20)
+                    comp_play(False, rnd, c3_pos - 20)
+    if winner == 'comp' and each_player_round_done() is False:
+        comp_play(False, rnd, c3_pos)
+        if comp_round_done:
+            player_play(False, rnd, turn, x_limit, c1 - 1, c2, c3, c1_pos - 20, c2_pos, c3_pos)
+            if player_round_done:
+                comp_tm_play(rnd, c3_pos)
+                if comp_tm_round_done:
+                    player_tm_play(rnd, c3_pos - 20)
+    if winner == 'player' and each_player_round_done() is False:
+        player_play(False, rnd, turn, x_limit, c1, c2, c3, c1_pos, c2_pos, c3_pos)
+        if player_round_done:
+            comp_tm_play(rnd, c3_pos)
+            if comp_tm_round_done:
+                player_tm_play(rnd, c3_pos - 20)
+                if player_tm_round_done:
+                    comp_play(False, rnd, c3_pos - 20)
+    if winner == 'comp_tm' and each_player_round_done() is False:
+        comp_tm_play(rnd, c3_pos)
+        if comp_tm_round_done:
+            player_tm_play(rnd, c3_pos - 20)
+            if player_tm_round_done:
+                comp_play(False, rnd, c3_pos - 20)
+                if comp_round_done:
+                    player_play(False, rnd, turn, x_limit, c1 - 1, c2 - 1, c3 - 1, c1_pos - 20, c2_pos - 20,
+                                c3_pos - 20)
+    if winner == 'player_tm' and each_player_round_done() is False:
+        player_tm_play(rnd, c3_pos - 20)
+        if player_tm_round_done:
+            comp_play(False, rnd, c3_pos - 20)
+            if comp_round_done:
+                player_play(False, rnd, turn, x_limit, c1 - 1, c2, c3 - 1, c1_pos - 20, c2_pos, c3_pos - 20)
+                if player_round_done:
+                    comp_tm_play(rnd, c3_pos - 20)
     if player_tm_round_done and player_round_done and comp_round_done and comp_tm_round_done:
         winner = check_won_hand(rnd)
         set_won_hand(rnd, winner)
-        round_status['round'+str(rnd)] = True
+        play_area_clear()
+        round_status['round' + str(rnd)] = True
 
 
 def check_rounds_completed():
     global all_rounds_done
     for j in range(1, 14):
-        if round_status['round'+str(j)] is True:
+        if round_status['round' + str(j)] is True:
             all_rounds_done = True
         else:
             all_rounds_done = False
             break
 
 
-def declare_won_hands():
-    declare_comp_hands = font.render("Computer has won " + str(comp_won_hands) + " hands", True, (255, 255, 255))
-    declare_comp_hands = pygame.transform.rotate(declare_comp_hands, 90)
-    declare_player_hands = font.render(player_information[0].upper() + " has won " + str(player_won_hands) + " hands",
-                                       True, (0, 150, 255))
-    declare_comp_tm_hands = font.render("Computer teammate has won " + str(comp_tm_won_hands) + " hands", True,
-                                        (255, 255, 255))
-    declare_comp_tm_hands = pygame.transform.rotate(declare_comp_tm_hands, 270)
-    declare_player_tm_hands = font.render(player_information[0].upper() + " teammate has won " +
-                                          str(player_tm_won_hands) + " hands", True, (0, 150, 255))
-    win.blit(declare_player_hands, (370, 580))
-    win.blit(declare_player_tm_hands, (370, 60))
-    win.blit(declare_comp_hands, (40, 180))
-    win.blit(declare_comp_tm_hands, (930, 160))
-
-
-def show_winner():
+def winner_screen():
+    global run
+    win2 = pygame.display.set_mode((400, 200))
+    win2.fill((0, 0, 0))
+    win2.blit(d_intro_suit, (0, 70))
+    win2.blit(i_intro_suit, (100, 80))
+    win2.blit(g_intro_suit, (200, 70))
+    win2.blit(u_intro_suit, (300, 80))
+    leave_game = i_font.render("Press Enter to Quit", True, (161, 17, 17))
+    win2.blit(leave_game, (150, 180))
     a = comp_won_hands
     b = player_won_hands
     c = comp_tm_won_hands
     d = player_tm_won_hands
     total_player_won = b + d
     total_comp_won = a + c
-    winner_player = font.render(player_information[0].upper() + " HAS WON WITH A TOTAL HANDS OF " + str(total_player_won), True, (0, 150, 255))
-    winner_comp = font.render("COMP HAS WON WITH A TOTAL HANDS OF " + str(total_comp_won), True, (255, 255, 255))
-    match_draw = font.render("ITS A DRAW", True, (255, 255, 255))
+    comp_wins = i_font.render("Comp " + str(a), True, (255, 255, 255))
+    player_wins = i_font.render("Player " + str(b), True, (255, 255, 255))
+    comp_tm_wins = i_font.render("Comp Teammate " + str(c), True, (255, 255, 255))
+    player_tm_wins = i_font.render("Player Teammate " + str(d), True, (255, 255, 255))
+    win2.blit(comp_wins, (5, 50))
+    win2.blit(player_wins, (70, 50))
+    win2.blit(comp_tm_wins, (140, 50))
+    win2.blit(player_tm_wins, (270, 50))
+    winner_player = font.render(
+        player_information[0].upper() + " TEAM WINS!", True, (255, 255, 255))
+    winner_comp = font.render("COMP TEAM WINS!", True, (255, 255, 255))
+    match_draw = font.render("ITS A DRAW!", True, (255, 255, 255))
     if total_player_won > total_comp_won:
-        win.blit(winner_player, (250, 400))
+        win2.blit(winner_player, (100, 20))
     elif total_player_won < total_comp_won:
-        win.blit(winner_comp, (250, 400))
+        win2.blit(winner_comp, (120, 20))
     elif total_comp_won == total_player_won:
-        win.blit(match_draw, (300, 400))
+        win2.blit(match_draw, (120, 20))
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            run = False
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_RETURN:
+                run = False
+            if event.key == pygame.K_SPACE:
+                pass
 
 
 def start_play():
@@ -1605,51 +2300,7 @@ def start_play():
     check_rounds_completed()
     if all_rounds_done:
         play_area_clear()
-        declare_won_hands()
-        show_winner()
-
-
-
-
-
-
-
-    # if round_status['round2'] is False and round_status['round1']:
-    #     play_round(2)
-    #     start_new_round()
-    # if round_status['round3'] is False and round_status['round2']:
-    #     play_round(3)
-    #     start_new_round()
-    # if round_status['round4'] is False and round_status['round3']:
-    #     play_round(4)
-    #     start_new_round()
-    # if round_status['round5'] is False and round_status['round4']:
-    #     play_round(5)
-    #     start_new_round()
-    # if round_status['round6'] is False and round_status['round5']:
-    #     play_round(6)
-    #     start_new_round()
-    # if round_status['round7'] is False and round_status['round6']:
-    #     play_round(7)
-    #     start_new_round()
-    # if round_status['round8'] is False and round_status['round7']:
-    #     play_round(8)
-    #     start_new_round()
-    # if round_status['round9'] is False and round_status['round8']:
-    #     play_round(9)
-    #     start_new_round()
-    # if round_status['round10'] is False and round_status['round9']:
-    #     play_round(10)
-    #     start_new_round()
-    # if round_status['round11'] is False and round_status['round10']:
-    #     play_round(11)
-    #     start_new_round()
-    # if round_status['round12'] is False and round_status['round11']:
-    #     play_round(12)
-    #     start_new_round()
-    # if round_status['round13'] is False and round_status['round12']:
-    #     play_round(13)
-    #     print(comp_won_hands, player_won_hands, comp_tm_won_hands, player_tm_won_hands)
+        winner_screen()
 
 
 if check_for_quit:
@@ -1657,12 +2308,53 @@ if check_for_quit:
 else:
     run = True
 
+d_x = 0
+d_y = -100
+i_x = 100
+i_y = -150
+g_x = 200
+g_y = -100
+u_x = 300
+u_y = -150
+
+game_intro = False
 while run:
-    initialize_game()
-    start_play()
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            run = False
+    while game_intro is False:
+        win2 = pygame.display.set_mode((400, 200))
+        win2.fill((0, 0, 0))
+        user_comm = i_font.render("Press Enter to begin game", True, (161, 17, 17))
+        if Trumps:
+            intro_show_trump = i_font.render("You select trumps", True, (161, 17, 17))
+            win2.blit(intro_show_trump, (260, 180))
+        elif Trumps is False:
+            intro_show_trump = i_font.render("Computer selects trumps", True, (161, 17, 17))
+            win2.blit(intro_show_trump, (230, 180))
+        win2.blit(user_comm, (20, 180))
+        win2.blit(d_intro_suit, (d_x, d_y))
+        win2.blit(i_intro_suit, (i_x, i_y))
+        win2.blit(g_intro_suit, (g_x, g_y))
+        win2.blit(u_intro_suit, (u_x, u_y))
+        d_y += 1
+        i_y += 1
+        g_y += 1
+        u_y += 1
+        if d_y == 70:
+            d_y = -100
+        if i_y == 70:
+            i_y = -150
+        if g_y == 70:
+            g_y = -100
+        if u_y == 70:
+            u_y = -150
+        pygame.display.update()
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    game_intro = True
+    if game_intro:
+        initialize_game()
+        start_play()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
     pygame.display.update()
-
-
